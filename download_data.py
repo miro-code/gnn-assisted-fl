@@ -10,7 +10,7 @@ def main():
     centralized_mapping: Path = dataset_dir / 'client_data_mappings' / 'centralized' / '0'
     federated_partition: Path = dataset_dir / 'client_data_mappings' / 'fed_natural'
     #  Download compressed dataset
-    if not (home_dir / "femnist.tar.gz").exists():
+    if not (home_dir / "femnist.tar.gz").exists() and not dataset_dir.exists():
         id = "1-CI6-QoEmGiInV23-n_l6Yd8QGWerw8-"
         gdown.download(
             f"https://drive.google.com/uc?export=download&confirm=pbef&id={id}",
