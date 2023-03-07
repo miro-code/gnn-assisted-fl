@@ -2,3 +2,5 @@ femnist/
 /flenv/
 ._femnist
 .ipynb_checkpoints
+__pycache__/
+femnist.tar.gz
