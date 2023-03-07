@@ -77,6 +77,7 @@ def train_FEMNIST(
     device: str,
     optimizer: torch.optim.Optimizer,
     criterion: Module,
+    **kwargs,
 ) -> float:
     """Trains the network on the training set.
 
@@ -91,15 +92,20 @@ def train_FEMNIST(
     Returns:
         float: the final epoch mean train loss.
     """
+    if "max_batches" in kwargs:
+        max_batches = kwargs["max_batches"]
+    else:
+        max_batches = None
     net.train()
     running_loss, total = 0.0, 0
-    # for _ in tqdm(range(epochs)):
     for _ in range(epochs):
         running_loss = 0.0
         total = 0
-        batches_for_epoch = 0
+        batch_cnt = 0
         for data, labels in train_loader:
-            batches_for_epoch += 1
+            if max_batches is not None and batch_cnt >= max_batches:
+                break
+            batch_cnt += 1
             data, labels = data.to(device), labels.to(device)
             optimizer.zero_grad()
             loss = criterion(net(data), labels)
@@ -107,7 +113,6 @@ def train_FEMNIST(
             total += labels.size(0)
             loss.backward()
             optimizer.step()
-
     return running_loss / total
 
 
@@ -288,9 +293,18 @@ def get_federated_evaluation_function(
     Returns:
         Callable[[int, NDArrays, Dict[str, Any]], Tuple[float, Dict[str, Scalar]]]: external federated evaluation function.
     """
-
+    
     full_file: Path = centralized_mapping
     dataset: Dataset = load_FEMNIST_dataset(data_dir, full_file, "val")
+    mean = np.mean([val[1] for val in dataset])
+    num_samples = len(dataset)
+    index_list = list(range(0, num_samples))
+    prng = np.random.RandomState(1337)
+    prng.shuffle(index_list)
+    index_list = index_list[:1500]
+    dataset =  torch.utils.data.Subset(dataset, index_list)
+
+    print("Reduced federated test_set size from ", num_samples, " to a size of ", len(dataset), " mean index:", np.mean(index_list))
 
     def federated_evaluation_function(
         server_round: int,
