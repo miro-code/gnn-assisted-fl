@@ -31,41 +31,9 @@ class CustomClientManager(SimpleClientManager):
     def sample(
         self,
         num_clients: int,
-        server_round: int,
         min_num_clients: Optional[int] = None,
-        current_virtual_clock: Optional[float] = None,
+        criterion: Optional[Criterion] = None,
+        seed : int = 1337
     ) -> List[ClientProxy]:
-        """Sample a number of Flower ClientProxy instances."""
-        # Block until at least num_clients are connected.
-        if min_num_clients is None:
-            min_num_clients = num_clients
-        self.wait_for(min_num_clients)
-        # Sample clients which meet the criterion
-        cids = list(self.clients)
-        # Shuffle the list of clients
-        random.seed(self.seed)
-        for _ in range(server_round):
-            random.shuffle(cids)
-        log(INFO, f"Sampling using {self.criterion}")
-        available_cids = []
-        if self.criterion is not None:
-            self.criterion.current_virtual_clock = current_virtual_clock  # type: ignore
-            while len(available_cids) < num_clients and len(cids) > 0:
-                cid = cids.pop()
-                if self.criterion.select(self.clients[cid]):
-                    available_cids.append(cid)
-        else:
-            available_cids = random.sample(cids, num_clients)
-
-        if num_clients > len(available_cids):
-            log(
-                WARNING,
-                "Sampling failed: number of available clients"
-                " (%s) is less than number of requested clients (%s).",
-                len(available_cids),
-                num_clients,
-            )
-            return []
-        client_list = [self.clients[cid] for cid in available_cids]
-        print("Sampled the following clients: ", available_cids)
-        return client_list
+        random.seed(seed)
+        return super().sample(num_clients, min_num_clients, criterion)
