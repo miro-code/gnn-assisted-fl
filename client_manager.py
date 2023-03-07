@@ -23,6 +23,9 @@ from flwr.server.criterion import Criterion
 
 
 class CustomClientManager(SimpleClientManager):
+    """
+    Client manager that samples the same clients every time
+    """
     def __init__(self, criterion: Criterion, seed: int) -> None:
         super().__init__()
         self.criterion = criterion
