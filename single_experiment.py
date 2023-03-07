@@ -39,6 +39,39 @@ from datetime import datetime,timezone
 import json
 from flwr.server.strategy.fedavg import FedAvg
 
+from client import FlowerRayClient, get_flower_client_generator
+import server
+from server import Server, NewHistory as History
+import client_manager
+from client_manager import CustomClientManager
+from flwr.server.client_manager import SimpleClientManager
+from strategy import DeterministicSampleFedAvg as FedAvgM
+from client_utils import (
+    get_network_generator_cnn,
+    get_model_parameters,
+    aggregate_weighted_average,
+    get_federated_evaluation_function,
+    get_default_test_config,
+    get_default_train_config,
+)
+
+
+from client import FlowerRayClient, get_flower_client_generator
+import server
+from server import Server, NewHistory as History
+import client_manager
+from client_manager import CustomClientManager
+from strategy import DeterministicSampleFedAvg as FedAvgM
+from client_utils import (
+    get_network_generator_cnn,
+    get_model_parameters,
+    aggregate_weighted_average,
+    get_federated_evaluation_function,
+    get_default_test_config,
+    get_default_train_config,
+)
+
+from fedavg_angle import FedAvgAngle 
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
@@ -115,37 +148,6 @@ def start_seeded_simulation(
     ray.shutdown()
     return hist
 
-from client import FlowerRayClient, get_flower_client_generator
-import server
-from server import Server, NewHistory as History
-import client_manager
-from client_manager import CustomClientManager
-from strategy import DeterministicSampleFedAvg as FedAvgM
-from client_utils import (
-    get_network_generator_cnn,
-    get_model_parameters,
-    aggregate_weighted_average,
-    get_federated_evaluation_function,
-    get_default_test_config,
-    get_default_train_config,
-)
-
-
-from client import FlowerRayClient, get_flower_client_generator
-import server
-from server import Server, NewHistory as History
-import client_manager
-from client_manager import CustomClientManager
-from strategy import DeterministicSampleFedAvg as FedAvgM
-from client_utils import (
-    get_network_generator_cnn,
-    get_model_parameters,
-    aggregate_weighted_average,
-    get_federated_evaluation_function,
-    get_default_test_config,
-    get_default_train_config,
-)
-
 
 np.random.seed(Seeds.DEFAULT)
 random.seed(Seeds.DEFAULT)
@@ -178,7 +180,7 @@ default_parameters: Dict = {
     "client_generator": client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": FedAvgM,
+    "strategy": FedAvgAngle,
     "fed_eval": True,
 }
 
@@ -222,7 +224,7 @@ def run_fixed_fl(
         evaluate_metrics_aggregation_fn=aggregate_weighted_average,
         
     )
-    client_manager = CustomClientManager(criterion=None, seed=parameters["seed"])
+    client_manager = SimpleClientManager()
     server = Server(
         client_manager=client_manager,
         strategy=strategy,
@@ -238,4 +240,4 @@ def run_fixed_fl(
         name=f"fixed_fl_run"
     )
 
-run_fixed_fl()
+run_fixed_fl(num_clients_per_round = 10, num_total_clients = 30)
