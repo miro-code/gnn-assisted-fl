@@ -5,3 +5,5 @@ femnist/
 __pycache__/
 femnist.tar.gz
 *.pyc
+histories/
+.vscode/
