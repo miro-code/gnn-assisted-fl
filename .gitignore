@@ -7,3 +7,4 @@ femnist.tar.gz
 *.pyc
 histories/
 .vscode/
+*.egg-info
