@@ -18,9 +18,9 @@ def main():
         )
         
     # Decompress dataset 
-    if not dataset_dir.exists():
-        os.system(f"tar -xf {str(home_dir)}/femnist.tar.gz -C {str(home_dir)} 2> /dev/null")
-        print(f"Dataset extracted in {dataset_dir}")
+    # if not dataset_dir.exists():
+    #     os.system(f"tar -xf {str(home_dir)}/femnist.tar.gz -C {str(home_dir)} 2> /dev/null")
+    #     print(f"Dataset extracted in {dataset_dir}")
 
 
 if __name__ == "__main__":

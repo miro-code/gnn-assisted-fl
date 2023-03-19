@@ -22,7 +22,7 @@ from flwr.common.typing import NDArrays, Scalar
 from torch.nn import Module
 from torch.utils.data import DataLoader, Dataset
 
-from client_utils import (
+from gflower.clients.client_utils import (
     get_model_parameters,
     set_model_parameters,
     load_FEMNIST_dataset,

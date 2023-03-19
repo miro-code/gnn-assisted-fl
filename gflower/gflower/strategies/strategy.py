@@ -32,7 +32,7 @@ from flwr.server.client_proxy import ClientProxy
 
 from flwr.server.strategy import FedAvgM
 
-from client_manager import CustomClientManager
+from gflower.clients.client_manager import CustomClientManager
 
 
 # flake8: noqa: E501

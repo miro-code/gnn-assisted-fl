@@ -39,14 +39,13 @@ from datetime import datetime,timezone
 import json
 from flwr.server.strategy.fedavg import FedAvg
 
-from client import FlowerRayClient, get_flower_client_generator
-import server
-from server import Server, NewHistory as History
-import client_manager
-from client_manager import CustomClientManager
-from flwr.server.client_manager import SimpleClientManager
-from strategy import DeterministicSampleFedAvg as FedAvgM
-from client_utils import (
+from gflower.clients.client import FlowerRayClient, get_flower_client_generator
+import gflower.servers.server
+from gflower.servers.server import Server, NewHistory as History
+import gflower.clients.client_manager as client_manager
+from gflower.clients.client_manager import CustomClientManager
+from gflower.strategies.strategy import DeterministicSampleFedAvg as FedAvgM
+from gflower.clients.client_utils import (
     get_network_generator_cnn,
     get_model_parameters,
     aggregate_weighted_average,
@@ -55,23 +54,7 @@ from client_utils import (
     get_default_train_config,
 )
 
-
-from client import FlowerRayClient, get_flower_client_generator
-import server
-from server import Server, NewHistory as History
-import client_manager
-from client_manager import CustomClientManager
-from strategy import DeterministicSampleFedAvg as FedAvgM
-from client_utils import (
-    get_network_generator_cnn,
-    get_model_parameters,
-    aggregate_weighted_average,
-    get_federated_evaluation_function,
-    get_default_test_config,
-    get_default_train_config,
-)
-
-from fedavg_angle import FedAvgAngle 
+from gflower.strategies.fedavg_angle import FedAvgAngle 
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
@@ -180,7 +163,7 @@ default_parameters: Dict = {
     "client_generator": client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": FedAvgAngle,
+    "strategy": FedAvg,
     "fed_eval": True,
 }
 
