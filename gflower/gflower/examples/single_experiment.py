@@ -138,6 +138,7 @@ torch.manual_seed(Seeds.DEFAULT)
 network_generator_cnn = get_network_generator_cnn()
 seed_net_cnn = network_generator_cnn()
 seed_model_cnn_params: NDArrays = get_model_parameters(seed_net_cnn)
+
 federated_evaluation_function = get_federated_evaluation_function(
     data_dir=data_dir,
     centralized_mapping=centralized_mapping,
@@ -163,7 +164,7 @@ default_parameters: Dict = {
     "client_generator": client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": FedAvg,
+    "strategy": FedAvgAngle,
     "fed_eval": True,
 }
 
@@ -223,4 +224,4 @@ def run_fixed_fl(
         name=f"fixed_fl_run"
     )
 
-run_fixed_fl(num_clients_per_round = 10, num_total_clients = 30)
+run_fixed_fl(num_clients_per_round = 10)
