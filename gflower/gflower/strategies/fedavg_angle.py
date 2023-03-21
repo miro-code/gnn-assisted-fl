@@ -160,6 +160,7 @@ class FedAvgAngle(FedAvg):
                 self.angles[key] = existing_angles
         self.update_adjacency_matrix()
 
+
         parameters_aggregated = ndarrays_to_parameters(aggregate(weights_results))
 
         # Aggregate custom metrics if aggregation fn was provided

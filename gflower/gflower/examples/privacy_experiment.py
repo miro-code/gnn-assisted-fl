@@ -105,7 +105,6 @@ from gflower.servers.server import Server, NewHistory as History
 import gflower.clients.client_manager_privacy
 from gflower.clients.client_manager_privacy import CustomClientManager
 from gflower.strategies.strategy import DeterministicSampleFedAvg as FedAvgM
-
 from gflower.clients.client_utils_privacy import (
     get_network_generator_cnn,
     get_model_parameters,
@@ -471,7 +470,7 @@ default_parameters: Dict = {
     "client_generator": dp_client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": FedAvg,
+    "strategy": FedAvgM,
     "fed_eval": True,
     "server_side_noising": True,
 }
