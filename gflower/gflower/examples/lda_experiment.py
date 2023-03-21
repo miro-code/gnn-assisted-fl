@@ -242,8 +242,8 @@ def run_fixed_fl(
         name=f"lda_run_strategy_{parameters['strategy']}_clients_per_round_{parameters['num_clients_per_round']}_{parameters['seed']}"
     )
 
-get_femnist_lda_paritions(concentration = 0.5, num_partitions=100)
+#get_femnist_lda_paritions(concentration = 0.5, num_partitions=100)
 
-run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "FedAvg")
-run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "GCNAvg")
+#run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "FedAvg")
+#run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "GCNAvg")
 
