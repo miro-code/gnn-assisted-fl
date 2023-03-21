@@ -22,6 +22,7 @@ from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from flwr.server.strategy import Strategy
 from gflower.agents.networks import GraphConstructor
+from gflower.utils.data_utils import normalize_adj
 
 class GCNPredAvg(FedAvg):
     def __init__(
@@ -188,7 +189,8 @@ class GCNPredAvg(FedAvg):
 
 
         dist_metrix = adj
-        dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+        # dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+        dist_metrix = normalize_adj(dist_metrix)
         # print(dist_metrix)
         # print(["A"]*40)
         layers = 1
