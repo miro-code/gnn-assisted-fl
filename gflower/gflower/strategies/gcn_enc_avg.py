@@ -3,6 +3,8 @@ from logging import WARNING
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
+from gflower.agents.graph_networks import GCNEncoder
+from torch_geometric.nn import GAE
 
 from flwr.common import (
     EvaluateIns,
@@ -22,8 +24,9 @@ from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from flwr.server.strategy import Strategy
 from gflower.agents.networks import GraphConstructor
+from torch_geometric.utils import dense_to_sparse
 
-class GCNPredAvg(FedAvg):
+class GCNEncAvg(FedAvg):
     def __init__(
         self,
         *,
@@ -167,27 +170,68 @@ class GCNPredAvg(FedAvg):
                 dist_metrix[i][j] = torch.nn.functional.pairwise_distance(
                     param_metrix[i].view(1, -1), param_metrix[j].view(1, -1), p=2).clone().detach()
                 
+        
+        dist_metrix = torch.nn.functional.normalize(dist_metrix)
+
+        for i in range(len(param_metrix)):
+            a = torch.mean(dist_metrix[i])
+            k = 3
+            k_p  = 0
+            for j in range(len(param_metrix)):
+                if(dist_metrix[i][j] > a and k_p < k):
+                    dist_metrix[i][j] = 1
+                    k_p += 1
+                else:
+                    dist_metrix[i][j] = 0
+                    
+                
         # dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
 
-        dist_metrix = torch.nn.functional.normalize(dist_metrix).to('cuda')
-        gc = GraphConstructor(len(results), int(len(results)/2), len(results)*10,
-                          'cuda', 3).to('cuda')
-        idx = torch.arange(len(results)).to('cuda')
-        optimizer = torch.optim.SGD(gc.parameters(), lr=0.01, weight_decay=0.0001)
+        
+        # dist_metrix = torch.where(dist_metrix != 0)
+        # dist_metrix = torch.cat(dist_metrix, dim=0)
 
-        for e in range(10):
+        # edge_index, _ = dense_to_sparse(dist_metrix).to('cuda')
+        edge_index = dist_metrix.nonzero().t().contiguous()
+        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        out_channels = 1000
+        num_features = len(param_metrix[0])
+        epochs = 10
+
+        # model
+        model = GAE(GCNEncoder(num_features, out_channels))
+        # move to GPU (if available)
+        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        # model = model.to('cpu')
+        # x = data.x.to(device)
+        # train_pos_edge_index = data.train_pos_edge_index.to(device)
+
+        # inizialize the optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+
+       
+        def _train():
+            model.train()
             optimizer.zero_grad()
-            adj = gc(idx)
-            adj = torch.nn.functional.normalize(adj)
-
-            loss = torch.nn.functional.mse_loss(adj, dist_metrix)
+            # edge_index.to('cpu')
+            # param_metrix.to('cuda')
+            z = model.encode(param_metrix, edge_index)
+            loss = model.recon_loss(z, edge_index)
+            #if args.variational:
+            #   loss = loss + (1 / data.num_nodes) * model.kl_loss()
             loss.backward()
             optimizer.step()
+            return float(loss)
+        for epoch in range(1, epochs + 1):
+            loss = _train()
+            print('Epoch: {:03d}, loss: {:.4f}'.format(epoch, loss))
 
-        adj = gc.eval(idx).to("cpu")
 
-
-        dist_metrix = adj
+        model.eval()
+        z = model.encode(param_metrix, edge_index)
+        # dist_metrix = adj
         dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
         # print(dist_metrix)
         # print(["A"]*40)
@@ -205,6 +249,8 @@ class GCNPredAvg(FedAvg):
             cr_split = torch.split(new_param_matrix[i], [torch.tensor(a).prod() for a in shapes[i]])
             x.append(([t.reshape(shape).detach().numpy() for t, shape in zip(cr_split, shapes[i])],w[1]))
             i += 1
+
+
 
         parameters_aggregated = ndarrays_to_parameters(aggregate(x))
 
