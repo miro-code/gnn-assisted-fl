@@ -2,6 +2,7 @@ from flwr.server.strategy.fedavg import FedAvg
 from logging import WARNING
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
+import torch
 
 from flwr.common import (
     EvaluateIns,
@@ -129,6 +130,7 @@ class GCNAvg(FedAvg):
             self.adjacency_matrix[c1][c2] = True
             self.adjacency_matrix[c2][c1] = True
 
+    
     def aggregate_fit(
         self,
         server_round: int,
@@ -148,19 +150,60 @@ class GCNAvg(FedAvg):
             for _, fit_res in results
         ]
 
-        #store all the pairwise angles between the updates
-        for i in range(len(results)):
-            for j in range(i+1, len(results)):
-                angle = self._get_angle(self._get_update(self.current_global_model, parameters_to_ndarrays(results[i][1].parameters)), self._get_update(self.current_global_model,parameters_to_ndarrays(results[j][1].parameters)))
-                cid_i = results[i][0].cid
-                cid_j = results[j][0].cid
-                key = (min(cid_i, cid_j), max(cid_i, cid_j))
-                existing_angles = self.angles.get(key, [])
-                existing_angles.append(angle)
-                self.angles[key] = existing_angles
-        self.update_adjacency_matrix()
+        param_m = []
+        shapes = []
+        for w in weights_results:
+            w_flat = torch.concatenate([torch.from_numpy(a.flatten()) for a in w[0]]) 
+            w_shape = [a.shape for a in w[0]]
+            shapes.append(w_shape)
+            param_m.append(w_flat)
 
-        parameters_aggregated = ndarrays_to_parameters(aggregate(weights_results))
+        # shapes = np.stack(shapes)
+        param_metrix = torch.stack(param_m)
+        dist_metrix = torch.zeros((len(param_metrix), len(param_metrix)))
+        for i in range(len(param_metrix)):
+            for j in range(len(param_metrix)):
+                dist_metrix[i][j] = torch.nn.functional.pairwise_distance(
+                    param_metrix[i].view(1, -1), param_metrix[j].view(1, -1), p=2).clone().detach()
+                
+        # the stupid original paper uses nn.normalize which will not lead to sums of 1, ruining the loss in a sense
+        # I don't understand how the paper got accepted 
+        dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+        print(dist_metrix)
+        print(["A"]*40)
+        layers = 1
+        aggregated_param = torch.mm(dist_metrix, param_metrix)
+        for i in range(layers):
+            aggregated_param = torch.mm(dist_metrix, aggregated_param)
+        new_param_matrix = aggregated_param
+
+        # this is slow (but not noticeable)
+        i = 0
+        x = []
+        for w in weights_results:
+            cr_split = torch.split(new_param_matrix[i], [torch.tensor(a).prod() for a in shapes[i]])
+            x.append(([t.reshape(shape).numpy() for t, shape in zip(cr_split, shapes[i])],w[1]))
+            i += 1
+
+        # print(x)
+        # flag = True
+        #store all the pairwise angles between the updates
+        # for i in range(len(results)):
+        #     for j in range(i+1, len(results)):
+        #         angle = self._get_angle(self._get_update(self.current_global_model, parameters_to_ndarrays(results[i][1].parameters)), self._get_update(self.current_global_model,parameters_to_ndarrays(results[j][1].parameters)))
+        #         # local_adj 
+        #         cid_i = results[i][0].cid
+        #         cid_j = results[j][0].cid
+        #         key = (min(cid_i, cid_j), max(cid_i, cid_j))
+        #         existing_angles = self.angles.get(key, [])
+        #         existing_angles.append(angle)
+        #         self.angles[key] = existing_angles
+        # self.update_adjacency_matrix()
+
+        # x is weights_results at this point
+
+        # TODO: run experiments with different no of clients; different 
+        parameters_aggregated = ndarrays_to_parameters(aggregate(x))
 
         # Aggregate custom metrics if aggregation fn was provided
         metrics_aggregated = {}
