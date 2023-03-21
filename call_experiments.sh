@@ -40,3 +40,5 @@ done
 
 # Call the function using Python with the parsed arguments
 python -c "from gflower.examples.${MODULE} import run_fixed_fl; run_fixed_fl(num_clients_per_round=${NUM_CLIENTS}, seed=${SEED}, num_total_clients=${NUM_TOTAL}, strategy='${STRATEGY}')"
+
+#call this with:  $sh call_experiments.sh --module=single_experiment --num_clients_per_round=2 --seed=42 --num_total_clients=3229 --strategy=FedAvg
