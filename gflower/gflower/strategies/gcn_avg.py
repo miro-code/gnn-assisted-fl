@@ -178,6 +178,7 @@ class GCNAvg(FedAvg):
         new_param_matrix = aggregated_param
 
         # this is slow (but not noticeable)
+        #map the flat array back to the original shape
         i = 0
         x = []
         for w in weights_results:

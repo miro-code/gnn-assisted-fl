@@ -55,9 +55,8 @@ from gflower.clients.client_utils import (
 )
 
 from gflower.strategies.fedavg_angle import FedAvgAngle 
-from gflower.strategies.gcn_avg import GCNAvg
+from gflower.strategies.gcn_avg import GCNAvg 
 from gflower.strategies.gcn_angle_avg import GCNAngleAvg
-from gflower.strategies.gcn_pred_avg import GCNPredAvg
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
@@ -67,6 +66,8 @@ random.seed(Seeds.DEFAULT)
 torch.manual_seed(Seeds.DEFAULT)
 torch.backends.cudnn.benchmark = False # type: ignore
 torch.backends.cudnn.deterministic = True # type: ignore
+
+from gflower.utils.lda_utils import get_femnist_lda_paritions
 
 def convert(o):
     if isinstance(o, np.int64) or isinstance(o, np.int32): return int(o)  
@@ -99,7 +100,8 @@ dataset_dir: Path = home_dir / "femnist"
 data_dir: Path = dataset_dir / "data"
 centralized_partition: Path = dataset_dir / "client_data_mappings" / "centralized"
 centralized_mapping: Path = dataset_dir / "client_data_mappings" / "centralized" / "0"
-federated_partition: Path = dataset_dir / "client_data_mappings" / "fed_natural"
+lda_partition: Path = dataset_dir / 'client_data_mappings' / 'lda'
+
 (home_dir / "histories").mkdir(exist_ok=True,parents=True)
 
 
@@ -152,12 +154,12 @@ federated_evaluation_function = get_federated_evaluation_function(
     criterion=nn.CrossEntropyLoss(),
 )
 
-client_generator = get_flower_client_generator(network_generator_cnn, data_dir, federated_partition)
+client_generator = get_flower_client_generator(network_generator_cnn, data_dir, lda_partition)
 
 default_parameters: Dict = {
     "train_config": get_default_train_config(),
     "test_config": get_default_test_config(),
-    "num_total_clients": 3229,
+    "num_total_clients": 10,
     "num_clients_per_round": 4,
     "num_evaluate_clients": 1,
     "accept_failures": False,
@@ -167,8 +169,10 @@ default_parameters: Dict = {
     "client_generator": client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": "FedAvg",
+    "strategy": "GCNAvg",
     "fed_eval": True,
+    "create_lda_partitions":False,
+    "concentration" : None,
 }
 
 
@@ -176,13 +180,14 @@ def run_fixed_fl(
     parameters=default_parameters,
     **kwargs
 ):
+    parameters: Dict = {**parameters, **kwargs}
+
     strategy_dict = {
             "FedAvg" : FedAvg,
             "GCNAvg" : GCNAvg,
             "GCNAngleAvg" : GCNAngleAvg
         }
     strategy_class = strategy_dict[parameters["strategy"]]
-    parameters: Dict = {**parameters, **kwargs}
 
     on_fit_config_fn: Callable[[int], Dict[str, Scalar]] = lambda cid: parameters[
         "train_config"
@@ -200,6 +205,9 @@ def run_fixed_fl(
         "num_gpus": 1.0 / parameters["num_clients_per_round"] if get_device() == "cuda" else 0.0,  # maximum amount of resources that a client can take
         "num_cpus": 1,
     }
+
+    if(parameters["create_lda_partitions"]):
+        get_femnist_lda_paritions(concentration = parameters["concentration"], num_partitions = parameters["num_total_clients"])
 
     strategy = strategy_class(
         fraction_fit=fraction_fit,
@@ -222,6 +230,7 @@ def run_fixed_fl(
         client_manager=client_manager,
         strategy=strategy,
     )
+
     return start_seeded_simulation(
         client_fn=parameters["client_generator"],
         num_clients=parameters["num_total_clients"],
@@ -233,4 +242,8 @@ def run_fixed_fl(
         name=f"lda_run_strategy_{parameters['strategy']}_clients_per_round_{parameters['num_clients_per_round']}_{parameters['seed']}"
     )
 
-run_fixed_fl(num_clients_per_round = 10, seed = 42, num_total_clients = 3229, strategy = "GCNAngleAvg")
+get_femnist_lda_paritions(concentration = 0.5, num_partitions=100)
+
+run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "FedAvg")
+run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "GCNAvg")
+
