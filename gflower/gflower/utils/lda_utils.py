@@ -22,6 +22,13 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 from numpy.random import BitGenerator, Generator, SeedSequence
 
+from femnist_dataset_hetero import FEMNIST
+
+import os
+from pathlib import Path
+import pandas as pd
+
+
 XY = Tuple[np.ndarray, np.ndarray]
 XYList = List[XY]
 PartitionedDataset = Tuple[XYList, XYList]
@@ -486,3 +493,87 @@ def create_lda_partitions(
         )
 
     return partitions, dirichlet_dist
+
+def get_femnist_lda_paritions(concentration : int, num_partitions : int = 100, seed : int = None):
+    """ creates lda partitions for femnist dataset; assumes it is stored in home/femnist
+    concentration int : skew of the distribution
+    num_paritions int : num_partitions (int, optional): Number of partitions to be created. Defaults to 100.
+    seed (None, int, SeedSequence, BitGenerator, Generator):
+                A seed to initialize the BitGenerator for generating the Dirichlet
+                distribution. This is defined in Numpy's official documentation as follows:
+                If None, then fresh, unpredictable entropy will be pulled from the OS.
+                One may also pass in a SeedSequence instance.
+                Additionally, when passed a BitGenerator, it will be wrapped by Generator.
+                If passed a Generator, it will be returned unaltered.
+                See official Numpy Documentation for further details.
+    """
+    path_cwd = os.getcwd()
+    print(path_cwd)
+
+    home_dir = Path(path_cwd)
+    dataset_dir: Path = home_dir / "femnist"
+    data_dir: Path = dataset_dir / "data"
+    centralized_partition: Path = dataset_dir / "client_data_mappings" / "centralized"
+
+
+    centralized_train_dataset: FEMNIST = FEMNIST(
+        mapping=centralized_partition/'0',
+        data_dir=data_dir,
+        name='train'
+        )
+    centralized_test_dataset: FEMNIST = FEMNIST(
+        mapping=centralized_partition/'0',
+        data_dir=data_dir,
+        name='test'
+        )
+
+    # Create partitions
+    x = np.array([x[0] for x in centralized_train_dataset.data])
+    y = np.array([x[1] for x in centralized_train_dataset.data])
+    train_clients_partitions, dist = create_lda_partitions(
+        dataset=(x,y),
+        dirichlet_dist=None,
+        num_partitions=3229,
+        concentration=concentration,
+        accept_imbalanced=True,
+    )
+    x = np.array([x[0] for x in centralized_test_dataset.data])
+    y = np.array([x[1] for x in centralized_test_dataset.data])
+    test_clients_partitions, dist = create_lda_partitions(
+        dataset=(x,y),
+        dirichlet_dist=dist,
+        num_partitions=3229,
+        concentration=concentration,
+        accept_imbalanced=True,
+    )
+
+    lda_partition_path: Path = dataset_dir / 'client_data_mappings' / 'lda'
+
+    store_lda_partitions(lda_partition_path, train_clients_partitions, test_clients_partitions)
+    return train_clients_partitions, test_clients_partitions
+
+def store_lda_partitions(lda_partition_path : Path, train_clients_partitions, test_clients_partitions):
+    """ Stores the lda mappings in the given path
+
+    lda_partition_path Path : where to store the partitions (usually something like dataset_dir / 'client_data_mappings' / 'lda') 
+    train_clients_partitions : train partitions
+    test_clients_partitions : test partitions
+    """
+    lda_partition_path.mkdir(parents=True, exist_ok=True)
+
+    for i, (train_set, test_set) in enumerate(zip(train_clients_partitions, test_clients_partitions)):
+        folder_path: Path = lda_partition_path / str(i)
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+        train_path: Path = folder_path / "train.csv"
+        test_path: Path = folder_path / "test.csv"
+
+        pd.DataFrame({'client_id': [0]*len(train_set[0]),
+                    'sample_path': train_set[0],
+                    'sample_id': range(len(train_set[0])),
+                    'label': train_set[1]}).to_csv(train_path, index=False)
+        pd.DataFrame({'client_id': [0]*len(test_set[0]),
+                    'sample_path': test_set[0],
+                    'sample_id': range(len(test_set[0])),
+                    'label': test_set[1]}).to_csv(test_path, index=False)
+        
