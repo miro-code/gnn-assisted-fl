@@ -22,7 +22,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 from numpy.random import BitGenerator, Generator, SeedSequence
 
-from femnist_dataset_hetero import FEMNIST
+from gflower.utils.femnist_dataset_hetero import FEMNIST
 
 import os
 from pathlib import Path
@@ -495,7 +495,7 @@ def create_lda_partitions(
     return partitions, dirichlet_dist
 
 def get_femnist_lda_paritions(concentration : int, num_partitions : int = 100, seed : int = None):
-    """ creates lda partitions for femnist dataset; assumes it is stored in home/femnist
+    """ creates and stores lda partitions for femnist dataset; assumes it is stored in home/femnist
     concentration int : skew of the distribution
     num_paritions int : num_partitions (int, optional): Number of partitions to be created. Defaults to 100.
     seed (None, int, SeedSequence, BitGenerator, Generator):
@@ -533,7 +533,7 @@ def get_femnist_lda_paritions(concentration : int, num_partitions : int = 100, s
     train_clients_partitions, dist = create_lda_partitions(
         dataset=(x,y),
         dirichlet_dist=None,
-        num_partitions=num_paritions,
+        num_partitions=num_partitions,
         concentration=concentration,
         accept_imbalanced=True,
     )
@@ -542,7 +542,7 @@ def get_femnist_lda_paritions(concentration : int, num_partitions : int = 100, s
     test_clients_partitions, dist = create_lda_partitions(
         dataset=(x,y),
         dirichlet_dist=dist,
-        num_partitions=num_paritions,
+        num_partitions=num_partitions,
         concentration=concentration,
         accept_imbalanced=True,
     )
