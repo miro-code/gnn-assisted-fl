@@ -56,6 +56,7 @@ from gflower.clients.client_utils import (
 
 from gflower.strategies.fedavg_angle import FedAvgAngle 
 from gflower.strategies.gcn_avg import GCNAvg
+from gflower.strategies.gcn_angle_avg import GCNAngleAvg
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
@@ -165,7 +166,7 @@ default_parameters: Dict = {
     "client_generator": client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": FedAvg,
+    "strategy": "FedAvg",
     "fed_eval": True,
 }
 
@@ -174,6 +175,12 @@ def run_fixed_fl(
     parameters=default_parameters,
     **kwargs
 ):
+    strategy_dict = {
+            "FedAvg" : FedAvg,
+            "GCNAvg" : GCNAvg,
+            "GCNAngleAvg" : GCNAngleAvg
+        }
+    strategy_class = strategy_dict[parameters["strategy"]]
     parameters: Dict = {**parameters, **kwargs}
 
     on_fit_config_fn: Callable[[int], Dict[str, Scalar]] = lambda cid: parameters[
@@ -193,7 +200,7 @@ def run_fixed_fl(
         "num_cpus": 1,
     }
 
-    strategy = parameters["strategy"](
+    strategy = strategy_class(
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_evaluate,
         min_fit_clients=parameters["min_fit_clients"],
@@ -222,7 +229,7 @@ def run_fixed_fl(
         config=ServerConfig(num_rounds=parameters["num_rounds"]),
         strategy=strategy,
         seed=parameters["seed"],
-        name=f"fixed_fl_run"
+        name=f"lda_run_strategy_{parameters['strategy']}_clients_per_round_{parameters['num_clients_per_round']}_{parameters['seed']}"
     )
 
-run_fixed_fl(num_clients_per_round = 10)
+run_fixed_fl(num_clients_per_round = 10, seed = 42, num_total_clients = 3229, strategy = "GCNAngleAvg")

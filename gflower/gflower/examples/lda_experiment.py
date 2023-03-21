@@ -55,7 +55,8 @@ from gflower.clients.client_utils import (
 )
 
 from gflower.strategies.fedavg_angle import FedAvgAngle 
-from gflower.strategies.gcn_avg import GCNAvg
+from gflower.strategies.gcn_avg import GCNAvg 
+from gflower.strategies.gcn_angle_avg import GCNAngleAvg
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
@@ -168,7 +169,7 @@ default_parameters: Dict = {
     "client_generator": client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": GCNAvg,
+    "strategy": "GCNAvg",
     "fed_eval": True,
     "create_lda_partitions":False,
     "concentration" : None,
@@ -181,10 +182,12 @@ def run_fixed_fl(
 ):
     parameters: Dict = {**parameters, **kwargs}
 
-    strategy_names = {
-        FedAvg : "FedAvg",
-        GCNAvg : "GCNAvg"
-    }
+    strategy_dict = {
+            "FedAvg" : FedAvg,
+            "GCNAvg" : GCNAvg,
+            "GCNAngleAvg" : GCNAngleAvg
+        }
+    strategy_class = strategy_dict[parameters["strategy"]]
 
     on_fit_config_fn: Callable[[int], Dict[str, Scalar]] = lambda cid: parameters[
         "train_config"
@@ -206,7 +209,7 @@ def run_fixed_fl(
     if(parameters["create_lda_partitions"]):
         get_femnist_lda_paritions(concentration = parameters["concentration"], num_partitions = parameters["num_total_clients"])
 
-    strategy = parameters["strategy"](
+    strategy = strategy_class(
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_evaluate,
         min_fit_clients=parameters["min_fit_clients"],
@@ -236,11 +239,11 @@ def run_fixed_fl(
         config=ServerConfig(num_rounds=parameters["num_rounds"]),
         strategy=strategy,
         seed=parameters["seed"],
-        name=f"lda_run_strategy_{strategy_names[parameters['strategy']]}_clients_{parameters['num_total_clients']}_{parameters['seed']}"
+        name=f"lda_run_strategy_{parameters['strategy']}_clients_per_round_{parameters['num_clients_per_round']}_{parameters['seed']}"
     )
 
 get_femnist_lda_paritions(concentration = 0.5, num_partitions=100)
 
-run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = FedAvg)
-run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = GCNAvg)
+run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "FedAvg")
+run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "GCNAvg")
 
