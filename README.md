@@ -1,6 +1,9 @@
 # GFLower
 
-Graph Neural Network assisted Federated Learning with Flower
+Graph Convolutional assisted Federated Learning with Flower.
+
+Product developed at the University of Cambridge based on: 
+https://github.com/dawenzi098/SFL-Structural-Federated-Learning
 
 ## First time running
 

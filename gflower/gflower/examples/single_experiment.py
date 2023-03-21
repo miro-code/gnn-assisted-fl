@@ -57,6 +57,7 @@ from gflower.clients.client_utils import (
 from gflower.strategies.fedavg_angle import FedAvgAngle 
 from gflower.strategies.gcn_avg import GCNAvg
 from gflower.strategies.gcn_angle_avg import GCNAngleAvg
+from gflower.strategies.gcn_pred_avg import GCNPredAvg
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
