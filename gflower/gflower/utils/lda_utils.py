@@ -533,7 +533,7 @@ def get_femnist_lda_paritions(concentration : int, num_partitions : int = 100, s
     train_clients_partitions, dist = create_lda_partitions(
         dataset=(x,y),
         dirichlet_dist=None,
-        num_partitions=3229,
+        num_partitions=num_paritions,
         concentration=concentration,
         accept_imbalanced=True,
     )
@@ -542,7 +542,7 @@ def get_femnist_lda_paritions(concentration : int, num_partitions : int = 100, s
     test_clients_partitions, dist = create_lda_partitions(
         dataset=(x,y),
         dirichlet_dist=dist,
-        num_partitions=3229,
+        num_partitions=num_paritions,
         concentration=concentration,
         accept_imbalanced=True,
     )
