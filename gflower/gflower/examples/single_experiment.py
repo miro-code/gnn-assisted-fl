@@ -56,6 +56,7 @@ from gflower.clients.client_utils import (
 
 from gflower.strategies.fedavg_angle import FedAvgAngle 
 from gflower.strategies.gcn_avg import GCNAvg
+from gflower.strategies.gcn_pred_avg import GCNPredAvg
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
@@ -165,7 +166,7 @@ default_parameters: Dict = {
     "client_generator": client_generator,
     "seed": Seeds.DEFAULT,
     "num_rounds": 10,
-    "strategy": FedAvg,
+    "strategy": GCNPredAvg,
     "fed_eval": True,
 }
 

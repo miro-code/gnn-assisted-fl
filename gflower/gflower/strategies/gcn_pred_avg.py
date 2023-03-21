@@ -2,6 +2,7 @@ from flwr.server.strategy.fedavg import FedAvg
 from logging import WARNING
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
+import torch
 
 from flwr.common import (
     EvaluateIns,
@@ -20,9 +21,10 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from flwr.server.strategy import Strategy
+from gflower.agents.networks import GraphConstructor
+from gflower.utils.data_utils import normalize_adj
 
-class FedAvgRoundAngle(FedAvg):
-    #builds the adjacency matrix for the angles in the specific round
+class GCNPredAvg(FedAvg):
     def __init__(
         self,
         *,
@@ -112,15 +114,15 @@ class FedAvgRoundAngle(FedAvg):
             for j in range(len(self.adjacency_matrix[i])):
                 self.adjacency_matrix[i][j] = False
 
-    def update_adjacency_matrix(self, n_edges):
+    def update_adjacency_matrix(self):
         """
         Updates the adjacency matrix based on the angles between the client updates
         two clients are defined as connected if their average angle over different rounds is smaller than the median
         """
         self._reset_adjacency_matrix()
         angle_list = list(self.angles.items())
-        angle_list.sort(key = lambda x : x[1])
-        for i in range(n_edges):
+        angle_list.sort(key = lambda x : np.mean(x[1]))
+        for i in range(len(angle_list)//2):
             c1_str, c2_str = angle_list[i][0]
             try:
                 c1 = int(c1_str)
@@ -130,22 +132,7 @@ class FedAvgRoundAngle(FedAvg):
             self.adjacency_matrix[c1][c2] = True
             self.adjacency_matrix[c2][c1] = True
 
-    def aggregate_gcn(self, 
-                      results : List[Tuple[ClientProxy, FitRes]], alpha = 0.5):
-        # Convert results
-        weights_results = [
-            (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
-            for _, fit_res in results
-        ]
-
-        cids = [proxy.cid for proxy, _ in results]
-
-        for i,cid in enumerate(cids):
-            for j,other_cid in enumerate(cids):
-                if(i != j):
-                    if(self.adjacency_matrix[int(cid)][])
-
-
+    
     def aggregate_fit(
         self,
         server_round: int,
@@ -159,21 +146,72 @@ class FedAvgRoundAngle(FedAvg):
         if not self.accept_failures and failures:
             return None, {}
 
-        
+        # Convert results
+        weights_results = [
+            (parameters_to_ndarrays(fit_res.parameters), fit_res.num_examples)
+            for _, fit_res in results
+        ]
 
-        #store all the pairwise angles between the updates
-        self.angles = {} # reset the angles
-        for i in range(len(results)):
-            for j in range(i+1, len(results)):
-                angle = self._get_angle(self._get_update(self.current_global_model, parameters_to_ndarrays(results[i][1].parameters)), self._get_update(self.current_global_model,parameters_to_ndarrays(results[j][1].parameters)))
-                cid_i = results[i][0].cid
-                cid_j = results[j][0].cid
-                key = (min(cid_i, cid_j), max(cid_i, cid_j))
-                self.angles[key] = angle 
-        self.update_adjacency_matrix(n_edges = len(results))
+        param_m = []
+        shapes = []
+        for w in weights_results:
+            w_flat = torch.concatenate([torch.from_numpy(a.flatten()) for a in w[0]]) 
+            w_shape = [a.shape for a in w[0]]
+            shapes.append(w_shape)
+            param_m.append(w_flat)
 
-        parameters_aggregated = ndarrays_to_parameters(self.aggregate_gcn(results))
+        # shapes = np.stack(shapes)
+        param_metrix = torch.stack(param_m)
+        dist_metrix = torch.zeros((len(param_metrix), len(param_metrix)))
+        for i in range(len(param_metrix)):
+            for j in range(len(param_metrix)):
+                dist_metrix[i][j] = torch.nn.functional.pairwise_distance(
+                    param_metrix[i].view(1, -1), param_metrix[j].view(1, -1), p=2).clone().detach()
+                
+        # dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
 
+        dist_metrix = torch.nn.functional.normalize(dist_metrix).to('cuda')
+        gc = GraphConstructor(len(results), int(len(results)/2), len(results)*10,
+                          'cuda', 3).to('cuda')
+        idx = torch.arange(len(results)).to('cuda')
+        optimizer = torch.optim.SGD(gc.parameters(), lr=0.01, weight_decay=0.0001)
+
+        for e in range(10):
+            optimizer.zero_grad()
+            adj = gc(idx)
+            adj = torch.nn.functional.normalize(adj)
+
+            loss = torch.nn.functional.mse_loss(adj, dist_metrix)
+            loss.backward()
+            optimizer.step()
+
+        adj = gc.eval(idx).to("cpu")
+
+
+        # dist_metrix = normalize_adj(adj.cpu().detach().numpy())
+        dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+
+
+        # dist_metrix = torch.tensor(dist_metrix)
+        # print(dist_metrix)
+        # print(["A"]*40)
+        layers = 1
+        aggregated_param = torch.mm(dist_metrix, param_metrix)
+        for i in range(layers):
+            aggregated_param = torch.mm(dist_metrix, aggregated_param)
+        new_param_matrix = aggregated_param
+
+        # this is slow (but not noticeable)
+        i = 0
+        x = []
+        for w in weights_results:
+            cr_split = torch.split(new_param_matrix[i], [torch.tensor(a).prod() for a in shapes[i]])
+            x.append(([t.reshape(shape).detach().numpy() for t, shape in zip(cr_split, shapes[i])],w[1]))
+            i += 1
+
+
+
+        parameters_aggregated = ndarrays_to_parameters(aggregate(x))
 
         # Aggregate custom metrics if aggregation fn was provided
         metrics_aggregated = {}
