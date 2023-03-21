@@ -2,7 +2,7 @@ from flwr.server.strategy.fedavg import FedAvg
 from logging import WARNING
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import numpy as np
-import torch
+import torch, math
 
 from flwr.common import (
     EvaluateIns,
@@ -21,10 +21,8 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.strategy.aggregate import aggregate, weighted_loss_avg
 from flwr.server.strategy import Strategy
-from gflower.agents.networks import GraphConstructor
-#from gflower.utils.data_utils import normalize_adj
 
-class GCNPredAvg(FedAvg):
+class GCNAngleAvg(FedAvg):
     def __init__(
         self,
         *,
@@ -165,49 +163,47 @@ class GCNPredAvg(FedAvg):
         dist_metrix = torch.zeros((len(param_metrix), len(param_metrix)))
         for i in range(len(param_metrix)):
             for j in range(len(param_metrix)):
-                dist_metrix[i][j] = torch.nn.functional.pairwise_distance(
-                    param_metrix[i].view(1, -1), param_metrix[j].view(1, -1), p=2).clone().detach()
-                
-        # dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+                dist_metrix[i][j] = np.pi - self._get_angle(param_metrix[i].view(1, -1).detach().cpu().numpy().flatten(), param_metrix[i].view(1, -1).detach().cpu().numpy().flatten())
 
-        dist_metrix = torch.nn.functional.normalize(dist_metrix).to('cuda')
-        gc = GraphConstructor(len(results), int(len(results)/2), len(results)*10,
-                          'cuda', 3).to('cuda')
-        idx = torch.arange(len(results)).to('cuda')
-        optimizer = torch.optim.SGD(gc.parameters(), lr=0.01, weight_decay=0.0001)
-
-        for e in range(10):
-            optimizer.zero_grad()
-            adj = gc(idx)
-            adj = torch.nn.functional.normalize(adj)
-
-            loss = torch.nn.functional.mse_loss(adj, dist_metrix)
-            loss.backward()
-            optimizer.step()
-
-        adj = gc.eval(idx).to("cpu")
-
-
-        dist_metrix = adj
+        dist_metrix = dist_metrix**2
+        # the stupid original paper uses nn.normalize which will not lead to sums of 1, ruining the loss in a sense
+        # I don't understand how the paper got accepted 
         dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
-        # dist_metrix = normalize_adj(dist_metrix)
-        # print(dist_metrix)
-        # print(["A"]*40)
+        print(dist_metrix)
+        print(["A"]*40)
         layers = 1
         aggregated_param = torch.mm(dist_metrix, param_metrix)
         for i in range(layers):
             aggregated_param = torch.mm(dist_metrix, aggregated_param)
         new_param_matrix = aggregated_param
 
-
         # this is slow (but not noticeable)
+        #map the flat array back to the original shape
         i = 0
         x = []
         for w in weights_results:
             cr_split = torch.split(new_param_matrix[i], [torch.tensor(a).prod() for a in shapes[i]])
-            x.append(([t.reshape(shape).detach().numpy() for t, shape in zip(cr_split, shapes[i])],w[1]))
+            x.append(([t.reshape(shape).numpy() for t, shape in zip(cr_split, shapes[i])],w[1]))
             i += 1
 
+        # print(x)
+        # flag = True
+        #store all the pairwise angles between the updates
+        # for i in range(len(results)):
+        #     for j in range(i+1, len(results)):
+        #         angle = self._get_angle(self._get_update(self.current_global_model, parameters_to_ndarrays(results[i][1].parameters)), self._get_update(self.current_global_model,parameters_to_ndarrays(results[j][1].parameters)))
+        #         # local_adj 
+        #         cid_i = results[i][0].cid
+        #         cid_j = results[j][0].cid
+        #         key = (min(cid_i, cid_j), max(cid_i, cid_j))
+        #         existing_angles = self.angles.get(key, [])
+        #         existing_angles.append(angle)
+        #         self.angles[key] = existing_angles
+        # self.update_adjacency_matrix()
+
+        # x is weights_results at this point
+
+        # TODO: run experiments with different no of clients; different 
         parameters_aggregated = ndarrays_to_parameters(aggregate(x))
 
         # Aggregate custom metrics if aggregation fn was provided

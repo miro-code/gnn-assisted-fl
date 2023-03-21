@@ -177,6 +177,7 @@ def run_fixed_fl(
     parameters=default_parameters,
     **kwargs
 ):
+    parameters: Dict = {**parameters, **kwargs}
     strategy_dict = {
             "FedAvg" : FedAvg,
             "GCNAvg" : GCNAvg,
@@ -186,7 +187,7 @@ def run_fixed_fl(
     
     parameters: Dict = {**parameters, **kwargs}
     strategy_class = strategy_dict[parameters["strategy"]]
-
+    
     on_fit_config_fn: Callable[[int], Dict[str, Scalar]] = lambda cid: parameters[
         "train_config"
     ]
