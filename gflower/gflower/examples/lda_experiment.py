@@ -38,6 +38,7 @@ from enum import IntEnum
 from datetime import datetime,timezone
 import json
 from flwr.server.strategy.fedavg import FedAvg
+from flwr.server.strategy.fedprox import FedProx
 
 from gflower.clients.client import FlowerRayClient, get_flower_client_generator
 import gflower.servers.server
@@ -186,7 +187,8 @@ def run_fixed_fl(
     strategy_dict = {
             "FedAvg" : FedAvg,
             "GCNAvg" : GCNAvg,
-            "GCNAngleAvg" : GCNAngleAvg
+            "GCNAngleAvg" : GCNAngleAvg,
+            "FedProx" : FedProx
         }
     
 
