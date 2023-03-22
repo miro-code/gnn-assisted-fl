@@ -212,7 +212,8 @@ def run_fixed_fl(
     if(parameters["create_lda_partitions"]):
         get_femnist_lda_paritions(concentration = parameters["concentration"], num_partitions = parameters["num_total_clients"])
 
-    strategy = strategy_class(
+    if(strategy_class == FedProx):
+        strategy = strategy_class(
         fraction_fit=fraction_fit,
         fraction_evaluate=fraction_evaluate,
         min_fit_clients=parameters["min_fit_clients"],
@@ -226,8 +227,24 @@ def run_fixed_fl(
         else None,
         fit_metrics_aggregation_fn=aggregate_weighted_average,
         evaluate_metrics_aggregation_fn=aggregate_weighted_average,
-        
-    )
+        proximal_mu = 0.01
+        )
+    else:
+        strategy = strategy_class(
+            fraction_fit=fraction_fit,
+            fraction_evaluate=fraction_evaluate,
+            min_fit_clients=parameters["min_fit_clients"],
+            min_available_clients=parameters["min_available_clients"],
+            on_fit_config_fn=on_fit_config_fn,
+            on_evaluate_config_fn=on_evaluate_config_fn,
+            initial_parameters=parameters["initial_parameters"],
+            accept_failures=parameters["accept_failures"],
+            evaluate_fn=federated_evaluation_function
+            if parameters["fed_eval"] is True
+            else None,
+            fit_metrics_aggregation_fn=aggregate_weighted_average,
+            evaluate_metrics_aggregation_fn=aggregate_weighted_average, 
+            )
     client_manager = SimpleClientManager()
     server = Server(
         client_manager=client_manager,
