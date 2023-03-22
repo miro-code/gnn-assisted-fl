@@ -189,8 +189,8 @@ class GCNPredAvg(FedAvg):
 
 
         dist_metrix = adj
-        # dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
-        dist_metrix = normalize_adj(dist_metrix)
+        dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+        # dist_metrix = normalize_adj(dist_metrix)
         # print(dist_metrix)
         # print(["A"]*40)
         layers = 1
