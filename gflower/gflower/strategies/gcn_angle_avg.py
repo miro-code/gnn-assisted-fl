@@ -159,23 +159,22 @@ class GCNAngleAvg(FedAvg):
             param_m.append(w_flat)
 
         # shapes = np.stack(shapes)
-        param_metrix = torch.stack(param_m)
-        dist_metrix = torch.zeros((len(param_metrix), len(param_metrix)))
-        for i in range(len(param_metrix)):
-            for j in range(len(param_metrix)):
-                dist_metrix[i][j] = np.pi - self._get_angle(param_metrix[i].view(1, -1).detach().cpu().numpy().flatten(), param_metrix[j].view(1, -1).detach().cpu().numpy().flatten())
+        H_m = torch.stack(param_m)
+        agg_adj = torch.zeros((len(H_m), len(H_m)))
+        for i in range(len(H_m)):
+            for j in range(len(H_m)):
+                agg_adj[i][j] = np.pi - self._get_angle(H_m[i].view(1, -1).detach().cpu().numpy().flatten(), H_m[j].view(1, -1).detach().cpu().numpy().flatten())
 
-        dist_metrix = dist_metrix**2
-        # the stupid original paper uses nn.normalize which will not lead to sums of 1, ruining the loss in a sense
-        # I don't understand how the paper got accepted 
-        dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
-        print(dist_metrix)
-        print(["A"]*40)
+        agg_adj = agg_adj**2
+
+        agg_adj = agg_adj / agg_adj.sum(dim=1, keepdim=True)
+        # print(agg_adj)
+        # print(["A"]*40)
         layers = 1
-        aggregated_param = torch.mm(dist_metrix, param_metrix)
+        H_mk = torch.mm(agg_adj, H_m)
         for i in range(layers):
-            aggregated_param = torch.mm(dist_metrix, aggregated_param)
-        new_param_matrix = aggregated_param
+            H_mk = torch.mm(agg_adj, H_mk)
+        new_param_matrix = H_mk
 
         # this is slow (but not noticeable)
         #map the flat array back to the original shape

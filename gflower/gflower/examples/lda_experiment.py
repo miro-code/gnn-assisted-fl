@@ -104,12 +104,12 @@ centralized_partition: Path = dataset_dir / "client_data_mappings" / "centralize
 centralized_mapping: Path = dataset_dir / "client_data_mappings" / "centralized" / "0"
 lda_partition: Path = dataset_dir / 'client_data_mappings' / 'lda'
 
-(home_dir / "histories").mkdir(exist_ok=True,parents=True)
+(home_dir / "histories_lda_1000").mkdir(exist_ok=True,parents=True)
 
 
 def save_history(hist, name):
   time = int(datetime.now(timezone.utc).timestamp())
-  with open(home_dir / "histories" / f"hist_{time}_{name}.json", "w", encoding="utf-8") as f:
+  with open(home_dir / "histories_lda_1000" / f"hist_{time}_{name}.json", "w", encoding="utf-8") as f:
             json.dump(hist.__dict__, f, ensure_ascii=False, indent=4, default=convert)
 
 def start_seeded_simulation(
@@ -193,8 +193,6 @@ def run_fixed_fl(
 
     parameters: Dict = {**parameters, **kwargs}
     strategy_class = strategy_dict[parameters["strategy"]]
-    
-
 
 
     on_fit_config_fn: Callable[[int], Dict[str, Scalar]] = lambda cid: parameters[
@@ -267,8 +265,6 @@ def run_fixed_fl(
         name=f"lda_run_strategy_{parameters['strategy']}_clients_per_round_{parameters['num_clients_per_round']}_{parameters['seed']}"
     )
 
-# get_femnist_lda_paritions(concentration = 0.5, num_partitions=100)
-
-#run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "FedAvg")
-#run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "GCNAvg")
-
+# get_femnist_lda_paritions(concentration=30, num_partitions=3229)
+# run_fixed_fl()
+# run_fixed_fl(num_clients_per_round = 10, num_total_clients = 3229, seed=1)

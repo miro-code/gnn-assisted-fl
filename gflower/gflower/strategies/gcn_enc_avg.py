@@ -163,40 +163,40 @@ class GCNEncAvg(FedAvg):
             param_m.append(w_flat)
 
         # shapes = np.stack(shapes)
-        param_metrix = torch.stack(param_m)
-        dist_metrix = torch.zeros((len(param_metrix), len(param_metrix)))
-        for i in range(len(param_metrix)):
-            for j in range(len(param_metrix)):
-                dist_metrix[i][j] = torch.nn.functional.pairwise_distance(
-                    param_metrix[i].view(1, -1), param_metrix[j].view(1, -1), p=2).clone().detach()
+        H_m = torch.stack(param_m)
+        agg_adj = torch.zeros((len(H_m), len(H_m)))
+        for i in range(len(H_m)):
+            for j in range(len(H_m)):
+                agg_adj[i][j] = torch.nn.functional.pairwise_distance(
+                    H_m[i].view(1, -1), H_m[j].view(1, -1), p=2).clone().detach()
                 
         
-        dist_metrix = torch.nn.functional.normalize(dist_metrix)
+        agg_adj = torch.nn.functional.normalize(agg_adj)
 
-        for i in range(len(param_metrix)):
-            a = torch.mean(dist_metrix[i])
+        for i in range(len(H_m)):
+            a = torch.mean(agg_adj[i])
             k = 3
             k_p  = 0
-            for j in range(len(param_metrix)):
-                if(dist_metrix[i][j] > a and k_p < k):
-                    dist_metrix[i][j] = 1
+            for j in range(len(H_m)):
+                if(agg_adj[i][j] > a and k_p < k):
+                    agg_adj[i][j] = 1
                     k_p += 1
                 else:
-                    dist_metrix[i][j] = 0
+                    agg_adj[i][j] = 0
                     
                 
-        # dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+        # agg_adj = agg_adj / agg_adj.sum(dim=1, keepdim=True)
 
         
-        # dist_metrix = torch.where(dist_metrix != 0)
-        # dist_metrix = torch.cat(dist_metrix, dim=0)
+        # agg_adj = torch.where(agg_adj != 0)
+        # agg_adj = torch.cat(agg_adj, dim=0)
 
-        # edge_index, _ = dense_to_sparse(dist_metrix).to('cuda')
-        edge_index = dist_metrix.nonzero().t().contiguous()
+        # edge_index, _ = dense_to_sparse(agg_adj).to('cuda')
+        edge_index = agg_adj.nonzero().t().contiguous()
         # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         out_channels = 1000
-        num_features = len(param_metrix[0])
+        num_features = len(H_m[0])
         epochs = 10
 
         # model
@@ -216,8 +216,8 @@ class GCNEncAvg(FedAvg):
             model.train()
             optimizer.zero_grad()
             # edge_index.to('cpu')
-            # param_metrix.to('cuda')
-            z = model.encode(param_metrix, edge_index)
+            # H_m.to('cuda')
+            z = model.encode(H_m, edge_index)
             loss = model.recon_loss(z, edge_index)
             #if args.variational:
             #   loss = loss + (1 / data.num_nodes) * model.kl_loss()
@@ -230,16 +230,16 @@ class GCNEncAvg(FedAvg):
 
 
         model.eval()
-        z = model.encode(param_metrix, edge_index)
-        # dist_metrix = adj
-        dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
-        # print(dist_metrix)
+        z = model.encode(H_m, edge_index)
+        # agg_adj = adj
+        agg_adj = agg_adj / agg_adj.sum(dim=1, keepdim=True)
+        # print(agg_adj)
         # print(["A"]*40)
         layers = 1
-        aggregated_param = torch.mm(dist_metrix, param_metrix)
+        H_mk = torch.mm(agg_adj, H_m)
         for i in range(layers):
-            aggregated_param = torch.mm(dist_metrix, aggregated_param)
-        new_param_matrix = aggregated_param
+            H_mk = torch.mm(agg_adj, H_mk)
+        new_param_matrix = H_mk
 
 
         # this is slow (but not noticeable)

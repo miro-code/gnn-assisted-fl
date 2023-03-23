@@ -1,4 +1,5 @@
 
+# from https://github.com/dawenzi098/SFL-Structural-Federated-Learning
 #import numpy as np
 #import scipy.sparse as sp
 

@@ -161,16 +161,16 @@ class GCNPredAvg(FedAvg):
             param_m.append(w_flat)
 
         # shapes = np.stack(shapes)
-        param_metrix = torch.stack(param_m)
-        dist_metrix = torch.zeros((len(param_metrix), len(param_metrix)))
-        for i in range(len(param_metrix)):
-            for j in range(len(param_metrix)):
-                dist_metrix[i][j] = torch.nn.functional.pairwise_distance(
-                    param_metrix[i].view(1, -1), param_metrix[j].view(1, -1), p=2).clone().detach()
+        H_m = torch.stack(param_m)
+        agg_adj = torch.zeros((len(H_m), len(H_m)))
+        for i in range(len(H_m)):
+            for j in range(len(H_m)):
+                agg_adj[i][j] = torch.nn.functional.pairwise_distance(
+                    H_m[i].view(1, -1), H_m[j].view(1, -1), p=2).clone().detach()
                 
-        # dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
+        # agg_adj = agg_adj / agg_adj.sum(dim=1, keepdim=True)
 
-        dist_metrix = torch.nn.functional.normalize(dist_metrix).to('cuda')
+        agg_adj = torch.nn.functional.normalize(agg_adj).to('cuda')
         gc = GraphConstructor(len(results), int(len(results)/2), len(results)*10,
                           'cuda', 3).to('cuda')
         idx = torch.arange(len(results)).to('cuda')
@@ -181,23 +181,23 @@ class GCNPredAvg(FedAvg):
             adj = gc(idx)
             adj = torch.nn.functional.normalize(adj)
 
-            loss = torch.nn.functional.mse_loss(adj, dist_metrix)
+            loss = torch.nn.functional.mse_loss(adj, agg_adj)
             loss.backward()
             optimizer.step()
 
         adj = gc.eval(idx).to("cpu")
 
 
-        dist_metrix = adj
-        dist_metrix = dist_metrix / dist_metrix.sum(dim=1, keepdim=True)
-        # dist_metrix = normalize_adj(dist_metrix)
-        # print(dist_metrix)
+        agg_adj = adj
+        agg_adj = agg_adj / agg_adj.sum(dim=1, keepdim=True)
+        # agg_adj = normalize_adj(agg_adj)
+        # print(agg_adj)
         # print(["A"]*40)
         layers = 1
-        aggregated_param = torch.mm(dist_metrix, param_metrix)
+        H_mk = torch.mm(agg_adj, H_m)
         for i in range(layers):
-            aggregated_param = torch.mm(dist_metrix, aggregated_param)
-        new_param_matrix = aggregated_param
+            H_mk = torch.mm(agg_adj, H_mk)
+        new_param_matrix = H_mk
 
 
         # this is slow (but not noticeable)

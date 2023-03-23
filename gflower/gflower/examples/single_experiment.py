@@ -257,3 +257,5 @@ def run_fixed_fl(
     )
 
 
+# run_fixed_fl(strategy = "GCNAngleAvg", num_rounds=2, num_clients_per_round=2)
+
