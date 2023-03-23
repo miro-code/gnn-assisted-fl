@@ -57,6 +57,7 @@ from gflower.clients.client_utils import (
 from gflower.strategies.fedavg_angle import FedAvgAngle 
 from gflower.strategies.gcn_avg import GCNAvg 
 from gflower.strategies.gcn_angle_avg import GCNAngleAvg
+from gflower.strategies.gcn_pred_avg import GCNPredAvg
 # Add new seeds here for easy autocomplete
 class Seeds(IntEnum):
     DEFAULT = 1337
@@ -180,15 +181,19 @@ def run_fixed_fl(
     parameters=default_parameters,
     **kwargs
 ):
-    strategy_class = strategy_dict[parameters["strategy"]]
-    parameters: Dict = {**parameters, **kwargs}
-
     strategy_dict = {
-            "FedAvg" : FedAvg,
-            "GCNAvg" : GCNAvg,
-            "GCNAngleAvg" : GCNAngleAvg
-        }
+        "FedAvg" : FedAvg,
+        "GCNAvg" : GCNAvg,
+        "GCNAngleAvg" : GCNAngleAvg,
+        "GCNPredAvg" : GCNPredAvg
+    }
+
+
+    parameters: Dict = {**parameters, **kwargs}
+    strategy_class = strategy_dict[parameters["strategy"]]
     
+
+
 
     on_fit_config_fn: Callable[[int], Dict[str, Scalar]] = lambda cid: parameters[
         "train_config"
@@ -243,7 +248,7 @@ def run_fixed_fl(
         name=f"lda_run_strategy_{parameters['strategy']}_clients_per_round_{parameters['num_clients_per_round']}_{parameters['seed']}"
     )
 
-#get_femnist_lda_paritions(concentration = 0.5, num_partitions=100)
+# get_femnist_lda_paritions(concentration = 0.5, num_partitions=100)
 
 #run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "FedAvg")
 #run_fixed_fl(num_clients_per_round = 10, num_total_clients=100, strategy = "GCNAvg")

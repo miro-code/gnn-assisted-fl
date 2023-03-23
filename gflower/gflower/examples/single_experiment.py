@@ -56,7 +56,7 @@ from gflower.clients.client_utils import (
 
 from gflower.strategies.fedavg_angle import FedAvgAngle 
 from gflower.strategies.gcn_avg import GCNAvg
-# from gflower.strategies.gcn_angle_avg import GCNAngleAvg
+from gflower.strategies.gcn_angle_avg import GCNAngleAvg
 from gflower.strategies.gcn_pred_avg import GCNPredAvg
 
 # Add new seeds here for easy autocomplete
@@ -181,7 +181,7 @@ def run_fixed_fl(
     strategy_dict = {
             "FedAvg" : FedAvg,
             "GCNAvg" : GCNAvg,
-            # "GCNAngleAvg" : GCNAngleAvg
+            "GCNAngleAvg" : GCNAngleAvg,
             "GCNPredAvg" : GCNPredAvg
         }
     
@@ -236,3 +236,5 @@ def run_fixed_fl(
         seed=parameters["seed"],
         name=f"single_experiment_strategy_{parameters['strategy']}_clients_per_round_{parameters['num_clients_per_round']}_{parameters['seed']}"
     )
+
+

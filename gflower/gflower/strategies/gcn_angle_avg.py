@@ -163,7 +163,7 @@ class GCNAngleAvg(FedAvg):
         dist_metrix = torch.zeros((len(param_metrix), len(param_metrix)))
         for i in range(len(param_metrix)):
             for j in range(len(param_metrix)):
-                dist_metrix[i][j] = np.pi - self._get_angle(param_metrix[i].view(1, -1).detach().cpu().numpy().flatten(), param_metrix[i].view(1, -1).detach().cpu().numpy().flatten())
+                dist_metrix[i][j] = np.pi - self._get_angle(param_metrix[i].view(1, -1).detach().cpu().numpy().flatten(), param_metrix[j].view(1, -1).detach().cpu().numpy().flatten())
 
         dist_metrix = dist_metrix**2
         # the stupid original paper uses nn.normalize which will not lead to sums of 1, ruining the loss in a sense
